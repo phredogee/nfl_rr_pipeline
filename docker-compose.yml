@@ -1,0 +1,25 @@
+# docker-compose.yml
+# Spins up the Postgres database for nfl_rr_pipeline
+# Usage:
+#   Start:  docker compose up -d
+#   Stop:   docker compose down
+#   Logs:   docker compose logs -f
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: nfl_pipeline_db
+    restart: unless-stopped        # auto-restarts if Docker Desktop restarts
+    environment:
+      POSTGRES_USER: fred
+      POSTGRES_PASSWORD: nfl123
+      POSTGRES_DB: nfl_rr_pipeline
+    ports:
+      - "5432:5432"                # expose to localhost
+    volumes:
+      - nfl_pipeline_data:/var/lib/postgresql/data  # persistent data volume
+      - ./config/schema.sql:/docker-entrypoint-initdb.d/schema.sql  # auto-runs schema on first start
+
+volumes:
+  nfl_pipeline_data:
+    external: true                 # uses the volume we already created with data in it
