@@ -1,13 +1,12 @@
 {
   "Riff Raff": {
-    "scoring": "Half PPR",
-    "scoring_column": "fantasy_points_ppr",
+    "scoring": "Custom",
     "slots": {
       "QB": 1,
       "RB": 2,
-      "WR": 3,
-      "TE": 0,
-      "FLEX": 2,
+      "WR": 2,
+      "TE": 1,
+      "FLEX": 1,
       "SuperFlex": 0,
       "K": 1,
       "DST": 1
@@ -42,51 +41,72 @@
       "DST": [
         "DST"
       ]
-    }
-  },
-  "3-Legged Horses": {
-    "scoring": "Half PPR",
-    "scoring_column": "fantasy_points_ppr",
-    "slots": {
-      "QB": 1,
-      "RB": 2,
-      "WR": 3,
-      "TE": 1,
-      "FLEX": 1,
-      "SuperFlex": 1,
-      "K": 1,
-      "DST": 1
     },
-    "slot_eligibility": {
-      "QB": [
-        "QB"
-      ],
-      "RB": [
-        "RB"
-      ],
-      "WR": [
-        "WR"
-      ],
-      "TE": [
-        "TE"
-      ],
-      "FLEX": [
-        "RB",
-        "WR",
-        "TE"
-      ],
-      "SuperFlex": [
-        "QB",
-        "RB",
-        "WR",
-        "TE"
-      ],
-      "K": [
-        "K"
-      ],
-      "DST": [
-        "DST"
-      ]
+    "scoring_config": {
+      "passing": {
+        "yards_per_point": 25.0,
+        "td_points": 4.0,
+        "int_deduction": -2.0,
+        "sack_yard_deduction": 0.0,
+        "sack_fumble_lost": -2.0,
+        "two_pt_conversion": 2.0,
+        "completion_bonus": 0.0,
+        "incomplete_deduction": 0.0,
+        "bonus_300_yards": 0.0,
+        "bonus_400_yards": 0.0
+      },
+      "rushing": {
+        "yards_per_point": 10.0,
+        "td_points": 6.0,
+        "fumble_lost_deduction": -2.0,
+        "two_pt_conversion": 2.0,
+        "bonus_100_yards": 0.0,
+        "bonus_200_yards": 0.0
+      },
+      "receiving": {
+        "yards_per_point": 10.0,
+        "td_points": 6.0,
+        "reception_bonus": 0.5,
+        "fumble_lost_deduction": -2.0,
+        "two_pt_conversion": 2.0,
+        "bonus_100_yards": 0.0,
+        "bonus_200_yards": 0.0
+      },
+      "kicking": {
+        "pat_made": 1.0,
+        "pat_missed": -1.0,
+        "fg_made_0_39": 3.0,
+        "fg_made_40_49": 4.0,
+        "fg_made_50_plus": 5.0,
+        "fg_missed_0_39": -1.0,
+        "fg_missed_40_49": 0.0,
+        "fg_missed_50_plus": 0.0
+      },
+      "dst": {
+        "sack": 1.0,
+        "interception": 2.0,
+        "fumble_recovered": 2.0,
+        "touchdown": 6.0,
+        "safety": 2.0,
+        "blocked_kick": 2.0,
+        "return_td": 6.0,
+        "three_and_out": 0.0,
+        "fourth_down_stop": 0.0,
+        "points_allowed_0": 10.0,
+        "points_allowed_1_6": 7.0,
+        "points_allowed_7_13": 4.0,
+        "points_allowed_14_20": 1.0,
+        "points_allowed_21_27": 0.0,
+        "points_allowed_28_34": -1.0,
+        "points_allowed_35_plus": -4.0,
+        "yards_allowed_0_99": 5.0,
+        "yards_allowed_100_199": 3.0,
+        "yards_allowed_200_299": 2.0,
+        "yards_allowed_300_399": 0.0,
+        "yards_allowed_400_449": -1.0,
+        "yards_allowed_450_499": -3.0,
+        "yards_allowed_500_plus": -5.0
+      }
     }
   }
 }

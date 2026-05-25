@@ -1,6 +1,6 @@
 # pages/matchup_compare.py
 # Matchup Comparison — compare your lineup vs opponent's projected points
-# Uses saved league profiles from League Manager for roster configuration
+# Uses league scoring config and scoring engine for accurate projections
 
 import streamlit as st
 import psycopg2
@@ -10,7 +10,9 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'config'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 from db_config import DB_CONFIG
+from scoring import calculate_avg_points
 
 LEAGUES_FILE = os.path.join(os.path.dirname(__file__), '..', 'config', 'leagues.json')
 
@@ -35,15 +37,14 @@ def load_leagues() -> dict:
 # ── Player data ────────────────────────────────────────────────────────────────
 
 @st.cache_data
-def get_all_players(season: int, scoring_column: str) -> pd.DataFrame:
-    """Load all players with full names and avg points for the selected season."""
-    return run_query(f"""
+def get_all_players(season: int) -> pd.DataFrame:
+    """Load all players with full names for the selected season."""
+    return run_query("""
         SELECT
             w.player_id,
             COALESCE(MAX(r.full_name), MAX(w.player_name)) AS full_name,
             MAX(w.position)                                 AS position,
-            MAX(w.team)                                     AS team,
-            ROUND(AVG(w.{scoring_column})::numeric, 1)      AS avg_pts
+            MAX(w.team)                                     AS team
         FROM weekly_stats w
         LEFT JOIN rosters r
             ON w.player_id = r.player_id
@@ -51,8 +52,25 @@ def get_all_players(season: int, scoring_column: str) -> pd.DataFrame:
         WHERE w.season = %s
         AND w.season_type = 'REG'
         GROUP BY w.player_id
-        ORDER BY avg_pts DESC NULLS LAST
+        ORDER BY full_name
     """, params=(season,))
+
+
+def get_player_weekly_stats(player_id: str, season: int) -> list[dict]:
+    """Fetch all weekly stats for a player as a list of dicts for the scoring engine."""
+    df = run_query("""
+        SELECT * FROM weekly_stats
+        WHERE player_id = %s
+        AND season = %s
+        AND season_type = 'REG'
+    """, params=(player_id, season))
+    return df.to_dict(orient="records")
+
+
+def get_projected_points(player_id: str, season: int, scoring_config: dict) -> float:
+    """Calculate a player's average projected points using the league scoring engine."""
+    weekly = get_player_weekly_stats(player_id, season)
+    return calculate_avg_points(weekly, scoring_config)
 
 # ── Player selector ────────────────────────────────────────────────────────────
 
@@ -65,18 +83,20 @@ def player_selector(label: str, players_df: pd.DataFrame, key: str, positions: l
         label,
         options,
         format_func=lambda r: "— select a player —" if r is None
-            else f"{r.full_name} — {r.position} | {r.team} | avg {r.avg_pts} pts",
+            else f"{r.full_name} — {r.position} | {r.team}",
         key=f"select_{key}"
     )
 
 # ── Lineup builder ─────────────────────────────────────────────────────────────
 
-def build_lineup(side: str, players_df: pd.DataFrame, slot_config: dict, eligibility: dict) -> pd.DataFrame:
-    """
-    Dynamically build lineup slots based on league config.
-    slot_config: {"QB": 1, "RB": 2, ...}
-    eligibility: {"QB": ["QB"], "FLEX": ["RB","WR","TE"], ...}
-    """
+def build_lineup(
+    side: str,
+    players_df: pd.DataFrame,
+    slot_config: dict,
+    eligibility: dict,
+    season: int,
+    scoring_config: dict
+) -> pd.DataFrame:
     rows = []
     counter = 0
 
@@ -84,17 +104,27 @@ def build_lineup(side: str, players_df: pd.DataFrame, slot_config: dict, eligibi
         if count == 0:
             continue
         for n in range(count):
-            # Label slot with number if more than one (e.g. RB1, RB2)
             label = f"{slot}{n+1}" if count > 1 else slot
             eligible_positions = eligibility.get(slot, [slot])
             player = player_selector(label, players_df, key=f"{side}_{counter}", positions=eligible_positions)
-            rows.append({
-                "slot":    label,
-                "player":  player.full_name if player else "— empty —",
-                "position": player.position if player else "",
-                "team":    player.team if player else "",
-                "avg_pts": float(player.avg_pts) if player and player.avg_pts else 0.0
-            })
+
+            if player:
+                avg_pts = get_projected_points(player.player_id, season, scoring_config)
+                rows.append({
+                    "slot":     label,
+                    "player":   player.full_name,
+                    "position": player.position,
+                    "team":     player.team,
+                    "avg_pts":  avg_pts
+                })
+            else:
+                rows.append({
+                    "slot":     label,
+                    "player":   "— empty —",
+                    "position": "",
+                    "team":     "",
+                    "avg_pts":  0.0
+                })
             counter += 1
 
     return pd.DataFrame(rows)
@@ -114,16 +144,13 @@ if not leagues:
     st.warning("No leagues saved yet. Go to League Manager to create one first.")
     st.stop()
 
-league_name = st.selectbox("Select League", list(leagues.keys()))
-league      = leagues[league_name]
-scoring     = league["scoring"]
-scoring_col = league["scoring_column"]
-slot_config = league["slots"]
-eligibility = league["slot_eligibility"]
+league_name    = st.selectbox("Select League", list(leagues.keys()))
+league         = leagues[league_name]
+slot_config    = league["slots"]
+eligibility    = league["slot_eligibility"]
+scoring_config = league.get("scoring_config", {})
 
-st.caption(f"Scoring: {scoring}")
-
-# ── Optional slot override for this matchup ────────────────────────────────────
+# ── Optional slot override ─────────────────────────────────────────────────────
 
 with st.expander("⚙️ Adjust slots for this matchup (optional)"):
     st.caption("Override your league's default roster slots for this week only.")
@@ -133,14 +160,11 @@ with st.expander("⚙️ Adjust slots for this matchup (optional)"):
         with col1 if i % 2 == 0 else col2:
             adjusted_slots[slot] = st.number_input(
                 slot,
-                min_value=0,
-                max_value=5,
-                value=default_count,  # starts at league default
+                min_value=0, max_value=5,
+                value=default_count,
                 step=1,
                 key=f"override_{slot}"
             )
-
-# Use adjusted slots if any were changed, otherwise use league defaults
 slot_config = adjusted_slots
 
 st.divider()
@@ -148,7 +172,7 @@ st.divider()
 # ── Season selector ────────────────────────────────────────────────────────────
 
 season     = st.selectbox("Season", [2024, 2023], index=0)
-players_df = get_all_players(season, scoring_col)
+players_df = get_all_players(season)
 
 st.divider()
 
@@ -158,11 +182,11 @@ col_mine, col_opp = st.columns(2)
 
 with col_mine:
     st.subheader("🟦 My Lineup")
-    my_lineup = build_lineup("mine", players_df, slot_config, eligibility)
+    my_lineup = build_lineup("mine", players_df, slot_config, eligibility, season, scoring_config)
 
 with col_opp:
     st.subheader("🟥 Opponent's Lineup")
-    opp_lineup = build_lineup("opp", players_df, slot_config, eligibility)
+    opp_lineup = build_lineup("opp", players_df, slot_config, eligibility, season, scoring_config)
 
 st.divider()
 
