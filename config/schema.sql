@@ -9,69 +9,118 @@ DROP TABLE IF EXISTS schedules;
 
 -- Schedule table: one row per game
 CREATE TABLE schedules (
-    game_id         VARCHAR(20) PRIMARY KEY,  -- unique game identifier
-    season          INTEGER NOT NULL,          -- e.g. 2024
-    game_type       VARCHAR(10),               -- REG, POST, PRE
-    week            INTEGER,                   -- week number
-    gameday         DATE,                      -- date of game
-    weekday         VARCHAR(10),               -- e.g. Sunday
-    gametime        VARCHAR(10),               -- kickoff time
-    away_team       VARCHAR(10),               -- team abbreviation
-    home_team       VARCHAR(10),               -- team abbreviation
-    away_score      INTEGER,                   -- final score
-    home_score      INTEGER,                   -- final score
-    stadium         VARCHAR(100),              -- venue name
-    roof            VARCHAR(20),               -- dome, outdoors, etc.
-    surface         VARCHAR(20),               -- grass, turf, etc.
-    temp            FLOAT,                     -- temperature at kickoff
-    wind            FLOAT                      -- wind speed at kickoff
+    game_id         VARCHAR(20) PRIMARY KEY,
+    season          INTEGER NOT NULL,
+    game_type       VARCHAR(10),
+    week            INTEGER,
+    gameday         DATE,
+    weekday         VARCHAR(10),
+    gametime        VARCHAR(10),
+    away_team       VARCHAR(10),
+    home_team       VARCHAR(10),
+    away_score      INTEGER,
+    home_score      INTEGER,
+    stadium         VARCHAR(100),
+    roof            VARCHAR(20),
+    surface         VARCHAR(20),
+    temp            FLOAT,
+    wind            FLOAT
 );
 
 -- Roster table: one row per player per season
 CREATE TABLE rosters (
-    player_id       VARCHAR(20),               -- unique player identifier
-    season          INTEGER NOT NULL,          -- e.g. 2024
-    team            VARCHAR(10),               -- team abbreviation
-    position        VARCHAR(10),               -- QB, RB, WR, etc.
-    depth_chart_position VARCHAR(10),          -- more specific position
-    jersey_number   INTEGER,
-    full_name       VARCHAR(100),
-    birth_date      DATE,
-    height          VARCHAR(10),               -- e.g. 6-2
-    weight          INTEGER,                   -- in pounds
-    college         VARCHAR(100),
-    years_exp       INTEGER,                   -- years of experience
-    status          VARCHAR(20),               -- ACT, INA, etc.
-    PRIMARY KEY (player_id, season, team)      -- player can switch teams
+    player_id               VARCHAR(20),
+    season                  INTEGER NOT NULL,
+    team                    VARCHAR(10),
+    position                VARCHAR(10),
+    depth_chart_position    VARCHAR(10),
+    jersey_number           INTEGER,
+    full_name               VARCHAR(100),
+    birth_date              DATE,
+    height                  VARCHAR(10),
+    weight                  INTEGER,
+    college                 VARCHAR(100),
+    years_exp               INTEGER,
+    status                  VARCHAR(20),
+    PRIMARY KEY (player_id, season, team)
 );
 
 -- Weekly stats table: one row per player per week
+-- Columns marked [LIVE API] will be NULL until live API integration
 CREATE TABLE weekly_stats (
-    player_id       VARCHAR(20),               -- links to rosters
-    player_name     VARCHAR(100),
-    season          INTEGER NOT NULL,
-    week            INTEGER NOT NULL,
-    season_type     VARCHAR(10),               -- REG, POST
-    team            VARCHAR(10),
-    opponent        VARCHAR(10),
-    position        VARCHAR(10),
+    player_id                   VARCHAR(20),
+    player_name                 VARCHAR(100),
+    season                      INTEGER NOT NULL,
+    week                        INTEGER NOT NULL,
+    season_type                 VARCHAR(10),
+    team                        VARCHAR(10),
+    opponent                    VARCHAR(10),
+    position                    VARCHAR(10),
+
     -- Passing
-    completions     INTEGER,
-    attempts        INTEGER,
-    passing_yards   FLOAT,
-    passing_tds     INTEGER,
-    interceptions   INTEGER,
+    completions                 INTEGER,
+    attempts                    INTEGER,
+    passing_yards               FLOAT,
+    passing_tds                 INTEGER,
+    interceptions               INTEGER,
+    sacks                       FLOAT,
+    sack_yards                  FLOAT,
+    sack_fumbles_lost           INTEGER,
+    passing_2pt_conversions     INTEGER,
+    passing_air_yards           FLOAT,
+    passing_yards_after_catch   FLOAT,
+    passing_first_downs         INTEGER,
+
     -- Rushing
-    carries         INTEGER,
-    rushing_yards   FLOAT,
-    rushing_tds     INTEGER,
+    carries                     INTEGER,
+    rushing_yards               FLOAT,
+    rushing_tds                 INTEGER,
+    rushing_fumbles             INTEGER,
+    rushing_fumbles_lost        INTEGER,
+    rushing_2pt_conversions     INTEGER,
+    rushing_first_downs         INTEGER,
+
     -- Receiving
-    targets         INTEGER,
-    receptions      INTEGER,
-    receiving_yards FLOAT,
-    receiving_tds   INTEGER,
-    -- Misc
-    fantasy_points  FLOAT,                     -- standard scoring
-    fantasy_points_ppr FLOAT,                  -- PPR scoring
+    targets                     INTEGER,
+    receptions                  INTEGER,
+    receiving_yards             FLOAT,
+    receiving_tds               INTEGER,
+    receiving_fumbles           INTEGER,
+    receiving_fumbles_lost      INTEGER,
+    receiving_2pt_conversions   INTEGER,
+    receiving_air_yards         FLOAT,
+    receiving_yards_after_catch FLOAT,
+    receiving_first_downs       INTEGER,
+
+    -- Misc offense
+    special_teams_tds           INTEGER,
+
+    -- Kicking [LIVE API]
+    pat_made                    INTEGER,
+    pat_missed                  INTEGER,
+    fg_made_0_39                INTEGER,
+    fg_made_40_49               INTEGER,
+    fg_made_50_plus             INTEGER,
+    fg_missed_0_39              INTEGER,
+    fg_missed_40_49             INTEGER,
+    fg_missed_50_plus           INTEGER,
+
+    -- DST [LIVE API]
+    dst_sacks                   INTEGER,
+    dst_interceptions           INTEGER,
+    dst_fumbles_recovered       INTEGER,
+    dst_touchdowns              INTEGER,
+    dst_safeties                INTEGER,
+    dst_blocked_kicks           INTEGER,
+    dst_return_tds              INTEGER,
+    dst_three_and_outs          INTEGER,
+    dst_fourth_down_stops       INTEGER,
+    dst_points_allowed          INTEGER,
+    dst_yards_allowed           INTEGER,
+
+    -- Pre-calculated (keep for reference/fallback)
+    fantasy_points              FLOAT,
+    fantasy_points_ppr          FLOAT,
+
     PRIMARY KEY (player_id, season, week, team)
 );

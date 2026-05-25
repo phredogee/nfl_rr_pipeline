@@ -150,15 +150,27 @@ def ingest_weekly_stats(seasons: list[int]):
     print(f"\n📊 Ingesting weekly stats for seasons: {seasons}")
     df = nfl.import_weekly_data(seasons)
 
-    print(f"   Raw shape: {df.shape} | dtypes sample: {df.dtypes[['player_id','season','week']].to_dict()}")
-    print(f"   Available columns: {list(df.columns)}")
+    print(f"   Raw shape: {df.shape}")
 
     cols = [
         'player_id', 'player_name', 'season', 'week', 'season_type',
         'recent_team', 'opponent_team', 'position',
-        'completions', 'attempts', 'passing_yards', 'passing_tds', 'interceptions',
-        'carries', 'rushing_yards', 'rushing_tds',
+        # Passing
+        'completions', 'attempts', 'passing_yards', 'passing_tds',
+        'interceptions', 'sacks', 'sack_yards', 'sack_fumbles_lost',
+        'passing_2pt_conversions', 'passing_air_yards',
+        'passing_yards_after_catch', 'passing_first_downs',
+        # Rushing
+        'carries', 'rushing_yards', 'rushing_tds', 'rushing_fumbles',
+        'rushing_fumbles_lost', 'rushing_2pt_conversions', 'rushing_first_downs',
+        # Receiving
         'targets', 'receptions', 'receiving_yards', 'receiving_tds',
+        'receiving_fumbles', 'receiving_fumbles_lost',
+        'receiving_2pt_conversions', 'receiving_air_yards',
+        'receiving_yards_after_catch', 'receiving_first_downs',
+        # Misc
+        'special_teams_tds',
+        # Pre-calculated
         'fantasy_points', 'fantasy_points_ppr'
     ]
 
@@ -169,7 +181,6 @@ def ingest_weekly_stats(seasons: list[int]):
     print(f"   Cleaned shape: {df.shape}")
     print(f"   Columns kept: {list(df.columns)}")
 
-    # Helper: safely convert to int, returning None for nulls
     def safe_int(val):
         try:
             if val is None or (isinstance(val, float) and pd.isna(val)):
@@ -178,7 +189,6 @@ def ingest_weekly_stats(seasons: list[int]):
         except (ValueError, OverflowError):
             return None
 
-    # Helper: safely convert to float, returning None for nulls
     def safe_float(val):
         try:
             if val is None or (isinstance(val, float) and pd.isna(val)):
@@ -187,13 +197,11 @@ def ingest_weekly_stats(seasons: list[int]):
         except (ValueError, OverflowError):
             return None
 
-    # Helper: safely convert to str, returning None for nulls
     def safe_str(val):
         if val is None or (isinstance(val, float) and pd.isna(val)):
             return None
         return str(val)
 
-    # Build rows explicitly using only columns that exist
     col_set = list(df.columns)
     rows = []
     for row in df.itertuples(index=False):
@@ -204,21 +212,48 @@ def ingest_weekly_stats(seasons: list[int]):
             safe_int(d.get('season')),
             safe_int(d.get('week')),
             safe_str(d.get('season_type')),
-            safe_str(d.get('recent_team')),    # was 'team'
-            safe_str(d.get('opponent_team')),  # was 'opponent'
+            safe_str(d.get('recent_team')),
+            safe_str(d.get('opponent_team')),
             safe_str(d.get('position')),
+            # Passing
             safe_int(d.get('completions')),
             safe_int(d.get('attempts')),
             safe_float(d.get('passing_yards')),
             safe_int(d.get('passing_tds')),
             safe_int(d.get('interceptions')),
+            safe_float(d.get('sacks')),
+            safe_float(d.get('sack_yards')),
+            safe_int(d.get('sack_fumbles_lost')),
+            safe_int(d.get('passing_2pt_conversions')),
+            safe_float(d.get('passing_air_yards')),
+            safe_float(d.get('passing_yards_after_catch')),
+            safe_int(d.get('passing_first_downs')),
+            # Rushing
             safe_int(d.get('carries')),
             safe_float(d.get('rushing_yards')),
             safe_int(d.get('rushing_tds')),
+            safe_int(d.get('rushing_fumbles')),
+            safe_int(d.get('rushing_fumbles_lost')),
+            safe_int(d.get('rushing_2pt_conversions')),
+            safe_int(d.get('rushing_first_downs')),
+            # Receiving
             safe_int(d.get('targets')),
             safe_int(d.get('receptions')),
             safe_float(d.get('receiving_yards')),
             safe_int(d.get('receiving_tds')),
+            safe_int(d.get('receiving_fumbles')),
+            safe_int(d.get('receiving_fumbles_lost')),
+            safe_int(d.get('receiving_2pt_conversions')),
+            safe_float(d.get('receiving_air_yards')),
+            safe_float(d.get('receiving_yards_after_catch')),
+            safe_int(d.get('receiving_first_downs')),
+            # Misc
+            safe_int(d.get('special_teams_tds')),
+            # Kicking [LIVE API] — NULL for now
+            None, None, None, None, None, None, None, None,
+            # DST [LIVE API] — NULL for now
+            None, None, None, None, None, None, None, None, None, None, None,
+            # Pre-calculated
             safe_float(d.get('fantasy_points')),
             safe_float(d.get('fantasy_points_ppr')),
         ))
@@ -227,9 +262,24 @@ def ingest_weekly_stats(seasons: list[int]):
         INSERT INTO weekly_stats (
             player_id, player_name, season, week, season_type,
             team, opponent, position,
-            completions, attempts, passing_yards, passing_tds, interceptions,
-            carries, rushing_yards, rushing_tds,
+            completions, attempts, passing_yards, passing_tds,
+            interceptions, sacks, sack_yards, sack_fumbles_lost,
+            passing_2pt_conversions, passing_air_yards,
+            passing_yards_after_catch, passing_first_downs,
+            carries, rushing_yards, rushing_tds, rushing_fumbles,
+            rushing_fumbles_lost, rushing_2pt_conversions, rushing_first_downs,
             targets, receptions, receiving_yards, receiving_tds,
+            receiving_fumbles, receiving_fumbles_lost,
+            receiving_2pt_conversions, receiving_air_yards,
+            receiving_yards_after_catch, receiving_first_downs,
+            special_teams_tds,
+            pat_made, pat_missed,
+            fg_made_0_39, fg_made_40_49, fg_made_50_plus,
+            fg_missed_0_39, fg_missed_40_49, fg_missed_50_plus,
+            dst_sacks, dst_interceptions, dst_fumbles_recovered,
+            dst_touchdowns, dst_safeties, dst_blocked_kicks,
+            dst_return_tds, dst_three_and_outs, dst_fourth_down_stops,
+            dst_points_allowed, dst_yards_allowed,
             fantasy_points, fantasy_points_ppr
         ) VALUES %s
         ON CONFLICT (player_id, season, week, team) DO NOTHING
@@ -242,7 +292,6 @@ def ingest_weekly_stats(seasons: list[int]):
 
     print(f"   ✅ {len(rows)} weekly stat rows inserted.")
 
-    
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
