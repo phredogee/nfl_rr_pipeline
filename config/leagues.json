@@ -1,0 +1,92 @@
+{
+  "Riff Raff": {
+    "scoring": "Half PPR",
+    "scoring_column": "fantasy_points_ppr",
+    "slots": {
+      "QB": 1,
+      "RB": 2,
+      "WR": 3,
+      "TE": 0,
+      "FLEX": 2,
+      "SuperFlex": 0,
+      "K": 1,
+      "DST": 1
+    },
+    "slot_eligibility": {
+      "QB": [
+        "QB"
+      ],
+      "RB": [
+        "RB"
+      ],
+      "WR": [
+        "WR"
+      ],
+      "TE": [
+        "TE"
+      ],
+      "FLEX": [
+        "RB",
+        "WR",
+        "TE"
+      ],
+      "SuperFlex": [
+        "QB",
+        "RB",
+        "WR",
+        "TE"
+      ],
+      "K": [
+        "K"
+      ],
+      "DST": [
+        "DST"
+      ]
+    }
+  },
+  "3-Legged Horses": {
+    "scoring": "Half PPR",
+    "scoring_column": "fantasy_points_ppr",
+    "slots": {
+      "QB": 1,
+      "RB": 2,
+      "WR": 3,
+      "TE": 1,
+      "FLEX": 1,
+      "SuperFlex": 1,
+      "K": 1,
+      "DST": 1
+    },
+    "slot_eligibility": {
+      "QB": [
+        "QB"
+      ],
+      "RB": [
+        "RB"
+      ],
+      "WR": [
+        "WR"
+      ],
+      "TE": [
+        "TE"
+      ],
+      "FLEX": [
+        "RB",
+        "WR",
+        "TE"
+      ],
+      "SuperFlex": [
+        "QB",
+        "RB",
+        "WR",
+        "TE"
+      ],
+      "K": [
+        "K"
+      ],
+      "DST": [
+        "DST"
+      ]
+    }
+  }
+}
