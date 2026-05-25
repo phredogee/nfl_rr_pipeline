@@ -67,9 +67,15 @@ def get_player_weekly_stats(player_id: str, season: int) -> list[dict]:
     return df.to_dict(orient="records")
 
 
-def get_projected_points(player_id: str, season: int, scoring_config: dict) -> float:
-    """Calculate a player's average projected points using the league scoring engine."""
+def get_projected_points(player_id: str, season: int, scoring_config: dict, last_n_weeks: int = 0) -> float:
+    """
+    Calculate a player's average projected points using the league scoring engine.
+    last_n_weeks: 0 = full season, any other int = last N weeks only
+    """
     weekly = get_player_weekly_stats(player_id, season)
+    if last_n_weeks > 0 and len(weekly) > 0:
+        # Sort by week descending and take last N
+        weekly = sorted(weekly, key=lambda x: x.get("week", 0), reverse=True)[:last_n_weeks]
     return calculate_avg_points(weekly, scoring_config)
 
 # ── Player selector ────────────────────────────────────────────────────────────
@@ -95,7 +101,8 @@ def build_lineup(
     slot_config: dict,
     eligibility: dict,
     season: int,
-    scoring_config: dict
+    scoring_config: dict,
+    last_n_weeks: int = 0
 ) -> pd.DataFrame:
     rows = []
     counter = 0
@@ -109,7 +116,7 @@ def build_lineup(
             player = player_selector(label, players_df, key=f"{side}_{counter}", positions=eligible_positions)
 
             if player:
-                avg_pts = get_projected_points(player.player_id, season, scoring_config)
+                avg_pts = get_projected_points(player.player_id, season, scoring_config, last_n_weeks)
                 rows.append({
                     "slot":     label,
                     "player":   player.full_name,
@@ -169,9 +176,28 @@ slot_config = adjusted_slots
 
 st.divider()
 
-# ── Season selector ────────────────────────────────────────────────────────────
+# ── Season + projection window ─────────────────────────────────────────────────
 
-season     = st.selectbox("Season", [2024, 2023], index=0)
+col1, col2 = st.columns(2)
+
+with col1:
+    season = st.selectbox("Season", [2024, 2023], index=0)
+
+with col2:
+    window_options = {
+        "Last 3 weeks":  3,
+        "Last 4 weeks":  4,   # default
+        "Last 6 weeks":  6,
+        "Last 8 weeks":  8,
+        "Full season":   0,
+    }
+    window_label = st.selectbox(
+        "Projection window",
+        list(window_options.keys()),
+        index=1   # default to "Last 4 weeks"
+    )
+    last_n_weeks = window_options[window_label]
+
 players_df = get_all_players(season)
 
 st.divider()
@@ -182,17 +208,18 @@ col_mine, col_opp = st.columns(2)
 
 with col_mine:
     st.subheader("🟦 My Lineup")
-    my_lineup = build_lineup("mine", players_df, slot_config, eligibility, season, scoring_config)
+    my_lineup = build_lineup("mine", players_df, slot_config, eligibility, season, scoring_config, last_n_weeks)
 
 with col_opp:
     st.subheader("🟥 Opponent's Lineup")
-    opp_lineup = build_lineup("opp", players_df, slot_config, eligibility, season, scoring_config)
+    opp_lineup = build_lineup("opp", players_df, slot_config, eligibility, season, scoring_config, last_n_weeks)
 
 st.divider()
 
 # ── Projected totals ───────────────────────────────────────────────────────────
 
 st.subheader("📊 Projected Score Comparison")
+st.caption(f"Based on: {window_label}")
 
 my_total  = my_lineup["avg_pts"].sum()
 opp_total = opp_lineup["avg_pts"].sum()
